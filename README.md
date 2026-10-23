@@ -1,15 +1,15 @@
 # bitwarden-mcp
 
-English | [中文](./README.zh-CN.md)
+English | [Chinese](./README.zh-CN.md)
 
 Bitwarden MCP server for Claude — exposes the Bitwarden **Public API**'s organization
 **member and vault group management** as MCP tools, focused on **inviting members and
-assigning them to vault groups** ("密码库群组邀请").
+assigning them to vault groups** ("vault group invitation").
 
 **Tech stack:** Python 3.12 + uv + FastMCP (Starlette/uvicorn)
 
-关联需求：PRD-15544（[Self-built MCP] MSPbots Integration - Bitwarden）。完整调研见
-`vendor-mcp-template/prd/Bitwarden.md`。
+Related requirement: PRD-15544 ([Self-built MCP] MSPbots Integration - Bitwarden). See the full research in
+`vendor-mcp-template/prd/Bitwarden.md`.
 
 **Out of scope:** Bitwarden Send (temporary secure credential links) is intentionally not
 implemented. The Public API does not allow management of individual vault items, and Send
@@ -112,12 +112,12 @@ immediately — the token is **not cached** across requests, in order to fully c
 
 ### Gateway mode HTTP headers (`AUTH_MODE=gateway`)
 
-| Header | 类型 | 是否必填 | 默认值 | 枚举值 | 字段描述 | Example |
+| Header | Type | Required | Default | Allowed values | Description | Example |
 |---|---|---|---|---|---|---|
-| `x-bitwarden-client-id` | string | 必填 | 无 | 无 | 组织 API Key 的 Client ID（Admin Console → Settings → Organization info） | `organization.3b1f...` |
-| `x-bitwarden-client-secret` | string | 必填 | 无 | 无 | 对应 Client Secret，仅用于本次请求内换取 access_token，不持久化、不写日志 | `AbCdEf123...` |
-| `x-bitwarden-identity-url` | string | 可选 | `https://identity.bitwarden.com` | 无 | Identity Token Endpoint，EU Cloud 传 `https://identity.bitwarden.eu`，自托管传 `https://your.domain.com/identity` | `https://identity.bitwarden.eu` |
-| `x-bitwarden-api-url` | string | 可选 | `https://api.bitwarden.com` | 无 | Public API Base URL，EU Cloud 传 `https://api.bitwarden.eu`，自托管传 `https://your.domain.com/api` | `https://api.bitwarden.eu` |
+| `x-bitwarden-client-id` | string | Yes | None | None | Client ID of the organization API Key (Admin Console → Settings → Organization info) | `organization.3b1f...` |
+| `x-bitwarden-client-secret` | string | Yes | None | None | The corresponding Client Secret, used only within this request to exchange for an access_token; not persisted and not logged | `AbCdEf123...` |
+| `x-bitwarden-identity-url` | string | Optional | `https://identity.bitwarden.com` | None | Identity Token Endpoint; for EU Cloud pass `https://identity.bitwarden.eu`, for self-hosted pass `https://your.domain.com/identity` | `https://identity.bitwarden.eu` |
+| `x-bitwarden-api-url` | string | Optional | `https://api.bitwarden.com` | None | Public API Base URL; for EU Cloud pass `https://api.bitwarden.eu`, for self-hosted pass `https://your.domain.com/api` | `https://api.bitwarden.eu` |
 
 Missing either of the two required headers on a `/mcp` request returns `401` with a
 `required_headers` list.
@@ -181,15 +181,15 @@ Base URL: `https://api.bitwarden.com` (default; overridable per-request, see Aut
 
 | Tool | Description | Parameters |
 |---|---|---|
-| `bitwarden_list_members` | 列出组织下所有成员 | 无 |
-| `bitwarden_get_member` | 获取指定成员详情 | `member_id` (string, 必填) |
-| `bitwarden_invite_member` | 邀请新成员加入组织 | `email` (string, 必填), `type` (int, 可选, 默认 2=User), `access_all` (bool, 可选, 默认 false), `external_id` (string, 可选) |
-| `bitwarden_reinvite_member` | 重新发送邀请邮件 | `member_id` (string, 必填) |
-| `bitwarden_remove_member` | 将成员从组织移除 | `member_id` (string, 必填) |
-| `bitwarden_list_groups` | 列出组织下所有密码库群组 | 无 |
-| `bitwarden_create_group` | 创建新的密码库群组 | `name` (string, 必填), `access_all` (bool, 可选, 默认 false), `external_id` (string, 可选) |
-| `bitwarden_list_member_groups` | 查看指定成员当前所属的群组 | `member_id` (string, 必填) |
-| `bitwarden_update_member_groups` | **核心操作**：将成员分配到指定的一组密码库群组（全量覆盖，非增量追加） | `member_id` (string, 必填), `group_ids` (string[], 必填) |
+| `bitwarden_list_members` | List all members of the organization | None |
+| `bitwarden_get_member` | Get details of the specified member | `member_id` (string, required) |
+| `bitwarden_invite_member` | Invite a new member to join the organization | `email` (string, required), `type` (int, optional, default 2=User), `access_all` (bool, optional, default false), `external_id` (string, optional) |
+| `bitwarden_reinvite_member` | Resend the invitation email | `member_id` (string, required) |
+| `bitwarden_remove_member` | Remove a member from the organization | `member_id` (string, required) |
+| `bitwarden_list_groups` | List all vault groups of the organization | None |
+| `bitwarden_create_group` | Create a new vault group | `name` (string, required), `access_all` (bool, optional, default false), `external_id` (string, optional) |
+| `bitwarden_list_member_groups` | View the groups the specified member currently belongs to | `member_id` (string, required) |
+| `bitwarden_update_member_groups` | **Core operation**: assign the member to the specified set of vault groups (full overwrite, not incremental append) | `member_id` (string, required), `group_ids` (string[], required) |
 
 **Member `type` (role) enum:** `0`=Owner, `1`=Admin, `2`=User (default/regular Member), `3`=Manager, `4`=Custom.
 **Member `status` enum (read-only):** `0`=Invited, `1`=Accepted, `2`=Confirmed.
