@@ -1,7 +1,5 @@
 # bitwarden-mcp
 
-English | [Chinese](./README.zh-CN.md)
-
 Bitwarden MCP server for Claude — exposes the Bitwarden **Public API**'s organization
 **member and vault group management** as MCP tools, focused on **inviting members and
 assigning them to vault groups** ("vault group invitation").
