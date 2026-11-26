@@ -1,0 +1,259 @@
+[
+ {
+  "id": "TC-BWS-001",
+  "ac": "AC1",
+  "dw": "DW1",
+  "priority": "P0",
+  "text": "Given user headers (client id user.<uuid>, client secret, master password) and mocked identity/profile/sends endpoints, When bitwarden_create_text_send(secret='Welcome#2026', expiration_hours=24, max_access_count=1) is called, Then exactly one POST /sends is sent with type 0, maxAccessCount 1, expirationDate = call time + 24 h (+/- 60 s), deletionDate >= expirationDate, text.hidden true, and text.text / name / key are EncStrings of the form '2.<iv>|<ct>|<mac>' that do not contain 'Welcome#2026'; and the result JSON has send_id, access_id, link, expiration_date, deletion_date, max_access_count 1",
+  "type": "auto",
+  "tests": [
+   "tests/test_sends.py::test_create_text_send_builds_encrypted_request_and_returns_link"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_create_text_send_builds_encrypted_request_and_returns_link passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-002",
+  "ac": "AC2",
+  "dw": "DW2",
+  "priority": "P0",
+  "text": "Given the POST /sends body captured in TC-BWS-001 and the returned link, When the seed is taken from the link fragment, the Send key is derived with HKDF-SHA256 (salt 'bitwarden-send', info 'send', 64 bytes) and text.text is decrypted, Then the plaintext equals the input secret; and decrypting the body's 'key' with the unlocked user key returns the same 16-byte seed (owner can open it in the vault)",
+  "type": "auto",
+  "tests": [
+   "tests/test_send_crypto.py::test_link_seed_decrypts_text_and_user_key_decrypts_seed"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_link_seed_decrypts_text_and_user_key_decrypts_seed passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-003",
+  "ac": "AC1",
+  "dw": "DW1",
+  "priority": "P0",
+  "text": "Given a protected user key built from known vectors for KDF type 0 (PBKDF2-SHA256, 600000 iterations, salt = lower-cased email) and KDF type 1 (Argon2id, 64 MiB, 3 iterations, 4 lanes, salt = SHA256(email)), When the master password is used to derive and stretch the master key (HKDF-Expand 'enc'/'mac') and unlock the user key, Then the 64-byte user key equals the expected vector for each KDF type (parametrized over {PBKDF2, Argon2id})",
+  "type": "auto",
+  "tests": [
+   "tests/test_send_crypto.py::test_unlock_user_key_pbkdf2_and_argon2id"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_unlock_user_key_pbkdf2_and_argon2id passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-004",
+  "ac": "AC1",
+  "dw": "DW1",
+  "priority": "P1",
+  "text": "Given access_id 'abc123' and a fixed seed, When the link is built for x-bitwarden-api-url parametrized over {absent -> https://send.bitwarden.com/#, https://api.bitwarden.eu -> https://vault.bitwarden.eu/#/send, https://vault.example.com/api -> https://vault.example.com/#/send}, Then the link is exactly 'https://send.bitwarden.com/#abc123/<base64url(seed) without padding>' for the default region and '<vault base>/#/send/abc123/<base64url(seed) without padding>' for EU and self-hosted",
+  "type": "auto",
+  "tests": [
+   "tests/test_send_crypto.py::test_send_link_base_per_region"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_send_link_base_per_region passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-005",
+  "ac": "AC5",
+  "dw": "DW1",
+  "priority": "P1",
+  "text": "Given valid user headers, When the tool is called with one out-of-range argument parametrized over {expiration_hours 0, expiration_hours 721, max_access_count 0, max_access_count 101, secret '', secret of 1001 chars, name of 101 chars}, Then the result is {'error':'invalid_argument','field':<that argument>} and no HTTP request is made; and the in-range boundaries {expiration_hours 1 and 720, max_access_count 1 and 100, secret of 1000 chars} each create a Send",
+  "type": "auto",
+  "tests": [
+   "tests/test_sends.py::test_out_of_range_arguments_rejected_without_http",
+   "tests/test_sends.py::test_boundary_values_accepted"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account. Boundary analysis on every numeric/length limit.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_out_of_range_arguments_rejected_without_http, test_boundary_values_accepted passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-006",
+  "ac": "AC6",
+  "dw": "DW1",
+  "priority": "P1",
+  "text": "Given a request carrying only the organization headers (no x-bitwarden-user-client-id / x-bitwarden-user-client-secret / x-bitwarden-master-password), When bitwarden_create_text_send is called, Then the result is {'error':'missing_credentials','required_headers':[the three user headers]} and no HTTP request is made",
+  "type": "auto",
+  "tests": [
+   "tests/test_sends.py::test_missing_user_headers_returns_missing_credentials"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_missing_user_headers_returns_missing_credentials passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-007",
+  "ac": "AC6",
+  "dw": "DW1",
+  "priority": "P0",
+  "text": "Given a mocked token response whose protected user key was made with master password 'right-pass', When the tool is called with x-bitwarden-master-password 'wrong-pass', Then the result is {'error':'unlock_failed'}, the MAC check fails before any decryption output is used, and POST /sends is never called",
+  "type": "auto",
+  "tests": [
+   "tests/test_sends.py::test_wrong_master_password_returns_unlock_failed_and_creates_nothing"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_wrong_master_password_returns_unlock_failed_and_creates_nothing passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-008",
+  "ac": "AC6",
+  "dw": "DW1",
+  "priority": "P1",
+  "text": "Given Bitwarden failures parametrized over {identity token 400 invalid_client -> authentication_failed, POST /sends 400 with message 'Due to an Enterprise Policy, you are only able to delete an existing Send.' -> bitwarden_error status 400 with that message, POST /sends 429 -> bitwarden_error 429, POST /sends 500 -> bitwarden_error 500, POST /sends timeout -> bitwarden_error with message 'timeout', token response without 'Key' (SSO / Key Connector account) -> unsupported_account}, When the tool is called, Then the result is the listed structured error and no link is returned",
+  "type": "auto",
+  "tests": [
+   "tests/test_sends.py::test_downstream_failures_return_structured_errors"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account. Dependency degradation matrix.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_downstream_failures_return_structured_errors passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-009",
+  "ac": "AC4",
+  "dw": "DW4",
+  "priority": "P0",
+  "text": "Given secret 'S3cr3t-Unique-7781' and master password 'MP-Unique-5520', When the tool runs the success path and every failure path of TC-BWS-007/008 with logging captured at DEBUG for all loggers (caplog) , Then neither string appears in any tool result, any error message, or any captured log record; the success result contains the link and metadata only",
+  "type": "auto",
+  "tests": [
+   "tests/test_sends.py::test_secret_and_master_password_never_in_result_errors_or_logs"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account. OWASP API3 / sensitive data exposure.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_secret_and_master_password_never_in_result_errors_or_logs passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-010",
+  "ac": "AC7",
+  "dw": "DW1",
+  "priority": "P0",
+  "text": "Given the HTTP app in gateway mode, When /mcp tools/list is sent with header sets parametrized over {org pair only -> 200 and the 9 existing tools plus bitwarden_create_text_send listed, user triple only -> 200, none -> 401 with required_headers naming both sets, org client id without secret and no user headers -> 401}, Then each status matches; and with org pair only, bitwarden_list_members still calls GET /public/members with the org token exactly as before",
+  "type": "auto",
+  "tests": [
+   "tests/test_middleware.py::test_header_set_matrix",
+   "tests/test_middleware.py::test_existing_member_tool_unchanged_with_org_headers"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account. OWASP API2 broken authentication.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_header_set_matrix, test_existing_member_tool_unchanged_with_org_headers passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-011",
+  "ac": "AC4",
+  "dw": "DW1",
+  "priority": "P0",
+  "text": "Given two concurrent /mcp tools/call requests (asyncio.gather) with different user credentials A and B against respx mocks keyed by client_id, When both create a Send, Then request A's token call uses only A's client id and secret and request B's only B's, each POST /sends uses its own access token, and neither result contains the other's link",
+  "type": "auto",
+  "tests": [
+   "tests/test_middleware.py::test_concurrent_requests_isolated"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account. Tenant isolation / request-level isolation.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_concurrent_requests_isolated passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-012",
+  "ac": "AC1",
+  "dw": "DW1",
+  "priority": "P2",
+  "text": "Given PBKDF2 at 600000 iterations and mocked HTTP with zero latency, When the tool is called 10 times sequentially on the dev machine, Then P95 wall time per call is <= 2 s and no call fails",
+  "type": "auto",
+  "tests": [
+   "tests/test_sends.py::test_kdf_cost_baseline"
+  ],
+  "notes": "Unit test with respx-mocked Bitwarden identity and API endpoints; no real account. Performance baseline; the ticket states no SLA (about 38 calls/month), the 2 s budget is a DEV01 assumption.",
+  "result": "pass",
+  "evidence": "uv run pytest -q @ 7ebb635: test_kdf_cost_baseline passed (34 passed in total, respx mocks)"
+ },
+ {
+  "id": "TC-BWS-013",
+  "ac": "AC1",
+  "dw": "DW1",
+  "priority": "P0",
+  "text": "Given a real Bitwarden test organization and a member account with a personal API key, When the agent calls bitwarden_create_text_send with secret 'qa-PRD-22483-<timestamp>', expiration_hours 1, max_access_count 2, Then the tool returns a link and opening it in a browser shows the secret after clicking reveal",
+  "type": "manual",
+  "precond": "Needs a real vendor account: Bitwarden test organization (Teams or Enterprise) with one member account, its personal API key (Account settings > Security > Keys) and master password configured as the connector's Send credentials on INT; the three credential fields must exist on the bitwarden vendor (Leo Yang).",
+  "steps": [
+   "On INT, run an agent bound to the Bitwarden connector and ask it to create a Bitwarden Send with text 'qa-PRD-22483-<timestamp>', expiry 1 hour, access limit 2.",
+   "Copy the 'link' from the tool result.",
+   "Open the link in a private browser window and click the reveal control."
+  ],
+  "expect": "The tool result has a link starting with https://send.bitwarden.com/# followed directly by the accessId (or the tenant's region base); the opened page shows exactly 'qa-PRD-22483-<timestamp>'.",
+  "result": "untested",
+  "notes": "Needs a real vendor account; not a release blocker for vendor MCP (mcp-track.md section 3).",
+  "reason": "Needs a real vendor account: a Bitwarden test organization with a member account API key and a bitwarden vendor with the three Send credential fields on INT (registered by Leo, tested after INT publish)."
+ },
+ {
+  "id": "TC-BWS-014",
+  "ac": "AC2",
+  "dw": "DW2",
+  "priority": "P0",
+  "text": "Given the Send from TC-BWS-013 (access limit 2, expiry 1 hour), When it has been opened 2 times, and separately a Send created with expiration_hours 1 is opened after 1 hour, Then both links no longer show the secret",
+  "type": "manual",
+  "precond": "Same account as TC-BWS-013.",
+  "steps": [
+   "Open the TC-BWS-013 link a second time (2 accesses total), then a third time.",
+   "Create another Send with expiration_hours 1 and max_access_count 5; wait 61 minutes; open its link."
+  ],
+  "expect": "The third open of the first link and the open after 61 minutes of the second link both show Bitwarden's 'Send does not exist or is no longer available' page instead of the secret.",
+  "result": "untested",
+  "notes": "Needs a real vendor account.",
+  "reason": "Needs a real vendor account: a Bitwarden test organization with a member account API key and a bitwarden vendor with the three Send credential fields on INT (registered by Leo, tested after INT publish)."
+ },
+ {
+  "id": "TC-BWS-015",
+  "ac": "AC3",
+  "dw": "DW3",
+  "priority": "P1",
+  "text": "Given the Sends created in TC-BWS-013/014, When the member account signs in to the Bitwarden web vault and opens the Send tab, Then each Send is listed with name 'Credentials', its expiration date and its access count",
+  "type": "manual",
+  "precond": "Same account as TC-BWS-013; web vault access for that member.",
+  "steps": [
+   "Sign in to the Bitwarden web vault as the sending member.",
+   "Open Send.",
+   "Open the Send created in TC-BWS-013 and read expiration and access count."
+  ],
+  "expect": "The Send is listed; expiration equals the tool result's expiration_date; maximum access count shows 2 and current access count matches the opens done.",
+  "result": "untested",
+  "notes": "Needs a real vendor account. Audit = the member's Send list (Open question OQ1).",
+  "reason": "Needs a real vendor account: a Bitwarden test organization with a member account API key and a bitwarden vendor with the three Send credential fields on INT (registered by Leo, tested after INT publish)."
+ },
+ {
+  "id": "TC-BWS-016",
+  "ac": "AC4",
+  "dw": "DW4",
+  "priority": "P0",
+  "text": "Given the agent run from TC-BWS-013 on INT, When its run detail and approval card (if any) are opened, Then the secret argument is shown masked and the tool result shows only the link and metadata",
+  "type": "manual",
+  "precond": "Same run as TC-BWS-013.",
+  "steps": [
+   "Open the agent run detail for the TC-BWS-013 run on INT.",
+   "Expand the bitwarden_create_text_send tool call input and output."
+  ],
+  "expect": "The 'secret' argument value is not shown in clear text (masked by the platform), and the output contains the link, send_id, access_id, dates and counts but not 'qa-PRD-22483-<timestamp>'.",
+  "result": "untested",
+  "notes": "Needs a real vendor account; masking is the platform's name-based redaction (mb-platform-agent shared/sensitive-args.ts).",
+  "reason": "Needs a real vendor account: a Bitwarden test organization with a member account API key and a bitwarden vendor with the three Send credential fields on INT (registered by Leo, tested after INT publish)."
+ },
+ {
+  "id": "TC-BWS-017",
+  "ac": "AC7",
+  "dw": "DW5",
+  "priority": "P2",
+  "text": "Given the connector was published to INT, When https://docs.mspbots.ai/connectors/bitwarden/ is opened, Then the page documents bitwarden_create_text_send and the three Send credential fields with the labels registered in the control plane",
+  "type": "manual",
+  "precond": "Review leg has published to INT and run the connector wiki step (mcp-track.md 4.5).",
+  "steps": [
+   "Open https://docs.mspbots.ai/connectors/bitwarden/.",
+   "Find the tool list and the 'Connect it in MSPbots Agent' field table."
+  ],
+  "expect": "HTTP 200; the tool list includes bitwarden_create_text_send; the field table lists the three Send fields with the registered labels.",
+  "result": "untested",
+  "notes": "DW5 (connector wiki page). Listed under AC7 because DW5 is a release deliverable, not product behaviour.",
+  "reason": "Connector wiki is a release-step deliverable of the review leg (mcp-track.md 4.5); not part of dev."
+ }
+]

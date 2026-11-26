@@ -11,8 +11,9 @@ from mcp.server.fastmcp import FastMCP
 from ..api_client import BitwardenClient, BitwardenError
 
 _NO_CREDENTIALS = (
-    "Error: No Bitwarden credentials configured. Set BITWARDEN_CLIENT_ID/BITWARDEN_CLIENT_SECRET "
-    "or use AUTH_MODE=gateway."
+    "Error: No Bitwarden organization credentials configured. Send the headers "
+    "x-bitwarden-client-id and x-bitwarden-client-secret (gateway mode), or set "
+    "BITWARDEN_CLIENT_ID/BITWARDEN_CLIENT_SECRET (env mode)."
 )
 
 

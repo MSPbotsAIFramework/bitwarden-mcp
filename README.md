@@ -9,10 +9,10 @@ assigning them to vault groups** ("vault group invitation").
 Related requirement: PRD-15544 ([Self-built MCP] MSPbots Integration - Bitwarden). See the full research in
 `vendor-mcp-template/prd/Bitwarden.md`.
 
-**Out of scope:** Bitwarden Send (temporary secure credential links) is intentionally not
-implemented. The Public API does not allow management of individual vault items, and Send
-requires a stateful, unlocked local `bw` CLI vault — incompatible with this service's
-stateless, multi-tenant gateway model.
+**Bitwarden Send:** `bitwarden_create_text_send` creates an end-to-end encrypted text Send in
+a Bitwarden account and returns the share link (PRD-22483). The Public API has no Send, so the
+tool logs in with a **user** API key and unlocks the account key with the master password, in
+memory, for that one request only (see "Authentication for Bitwarden Send").
 
 <div align="center">
 
@@ -112,9 +112,23 @@ immediately — the token is **not cached** across requests, in order to fully c
 | `x-bitwarden-client-secret` | string | Yes | None | None | The corresponding Client Secret, used only within this request to exchange for an access_token; not persisted and not logged | `AbCdEf123...` |
 | `x-bitwarden-identity-url` | string | Optional | `https://identity.bitwarden.com` | None | Identity Token Endpoint; for EU Cloud pass `https://identity.bitwarden.eu`, for self-hosted pass `https://your.domain.com/identity` | `https://identity.bitwarden.eu` |
 | `x-bitwarden-api-url` | string | Optional | `https://api.bitwarden.com` | None | Public API Base URL; for EU Cloud pass `https://api.bitwarden.eu`, for self-hosted pass `https://your.domain.com/api` | `https://api.bitwarden.eu` |
+| `x-bitwarden-user-client-id` | string | For the Send tool | None | None | Personal API key client id of the sending member account | `user.3b1f...` |
+| `x-bitwarden-user-client-secret` | string | For the Send tool | None | None | The personal API key client secret; used only within this request | `AbCdEf123...` |
+| `x-bitwarden-master-password` | string | For the Send tool | None | None | Master password of that account; used in memory to unlock the account key for this request only; never stored or logged | `********` |
 
-Missing either of the two required headers on a `/mcp` request returns `401` with a
-`required_headers` list.
+The two organization headers are required for the member and group tools; the three Send
+headers are required for `bitwarden_create_text_send`. A tenant may configure only one set.
+A `/mcp` request with neither a complete organization pair nor a complete Send triple returns
+`401` with a `required_headers` object listing both sets; a tool called without its headers
+returns an error naming the headers it is missing.
+
+### Authentication for Bitwarden Send
+
+A Send belongs to a user, not to an organization, and is encrypted with that user's key, so the
+organization API key cannot create one. Use a **dedicated member account** of the organization
+that holds no vault items and exists only to send: its Send list is the audit trail. Get its
+personal API key in the web vault: Account settings → Security → Keys → View API key. Accounts
+without a master password (SSO with Key Connector, trusted-device encryption) are not supported.
 
 ### Env mode variables (`AUTH_MODE=env`, local dev only)
 
@@ -122,6 +136,9 @@ Missing either of the two required headers on a `/mcp` request returns `401` wit
 |---|---|---|
 | `BITWARDEN_CLIENT_ID` | — | Organization API Key Client ID |
 | `BITWARDEN_CLIENT_SECRET` | — | Organization API Key Client Secret |
+| `BITWARDEN_USER_CLIENT_ID` | — | Personal API key client id of the Send account |
+| `BITWARDEN_USER_CLIENT_SECRET` | — | Personal API key client secret of the Send account |
+| `BITWARDEN_MASTER_PASSWORD` | — | Master password of the Send account |
 | `BITWARDEN_API_URL` | `https://api.bitwarden.com` | Public API base URL |
 | `BITWARDEN_IDENTITY_URL` | `https://identity.bitwarden.com` | Identity token endpoint base URL |
 | `AUTH_MODE` | `gateway` | `env` or `gateway` |
@@ -184,6 +201,7 @@ Base URL: `https://api.bitwarden.com` (default; overridable per-request, see Aut
 | `bitwarden_create_group` | Create a new vault group | `name` (string, required), `access_all` (bool, optional, default false), `external_id` (string, optional) |
 | `bitwarden_list_member_groups` | View the groups the specified member currently belongs to | `member_id` (string, required) |
 | `bitwarden_update_member_groups` | **Core operation**: assign the member to the specified set of vault groups (full overwrite, not incremental append) | `member_id` (string, required), `group_ids` (string[], required) |
+| `bitwarden_create_text_send` | Create a text Send in the sending account and return its share link. Each call creates a new Send; do not retry after a success. Errors are JSON with `error` = `invalid_argument`, `missing_credentials`, `authentication_failed`, `unlock_failed`, `unsupported_account` or `bitwarden_error` | `secret` (string, required, 1..1000 chars), `expiration_hours` (int, optional, default 24, 1..720), `max_access_count` (int, optional, default 1, 1..100), `name` (string, optional, default `Credentials`, max 100), `hide_text` (bool, optional, default true) |
 
 **Member `type` (role) enum:** `0`=Owner, `1`=Admin, `2`=User (default/regular Member), `3`=Manager, `4`=Custom.
 **Member `status` enum (read-only):** `0`=Invited, `1`=Accepted, `2`=Confirmed.
@@ -247,7 +265,7 @@ curl -i -X POST http://localhost:8080/mcp \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 # HTTP/1.1 401 Unauthorized
-# {"error":"Missing credentials","required_headers":["x-bitwarden-client-id","x-bitwarden-client-secret"]}
+# {"error":"Missing credentials","message":"...","required_headers":{"organization":["x-bitwarden-client-id","x-bitwarden-client-secret"],"send":["x-bitwarden-user-client-id","x-bitwarden-user-client-secret","x-bitwarden-master-password"]}}
 ```
 
 ## API Reference
@@ -258,7 +276,8 @@ curl -i -X POST http://localhost:8080/mcp \
 
 ## Known Limitations
 
-- **No Bitwarden Send support** — out of scope by design (see top of this README).
+- **Send is text-only** — no file Sends, Send passwords, email-restricted Sends, or listing /
+  editing / deleting Sends. The Send account must have a master password.
 - **`bitwarden_update_member_groups` is a full replace, not an append** — it mirrors the
   underlying `PUT /public/members/{id}/group-ids` semantics exactly. To add a member to one
   more group without removing existing ones, call `bitwarden_list_member_groups` first, merge
@@ -266,5 +285,5 @@ curl -i -X POST http://localhost:8080/mcp \
 - **No documented Public API rate limits** from Bitwarden — errors are passed through as-is.
 - Token exchange happens on every tool call (no caching), which adds latency but keeps the
   service fully stateless per the SOP requirement.
-- Requires a paid organization plan (Teams/Enterprise) with an organization API key generated;
-  free personal accounts cannot use this service.
+- The member and group tools require a paid organization plan (Teams/Enterprise) with an
+  organization API key generated; the Send tool needs only a Bitwarden account with an API key.
