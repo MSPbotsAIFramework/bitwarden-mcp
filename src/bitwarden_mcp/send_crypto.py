@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF, HKDFExpand
 KDF_PBKDF2 = 0
 KDF_ARGON2ID = 1
 SEED_LENGTH = 16
-DEFAULT_SEND_LINK_BASE = "https://send.bitwarden.com/#"
+DEFAULT_SEND_LINK_BASE = "https://send.bitwarden.com/#"  # PRD-22483: no slash after "#"; the redirect script needs exactly <id>/<key>
 
 
 class UnlockError(Exception):
@@ -106,14 +106,15 @@ def send_link(api_url: str | None, access_id: str, seed: bytes) -> str:
     """Build the share link for the region the account lives in."""
     fragment = base64.urlsafe_b64encode(seed).decode().rstrip("=")
     base = DEFAULT_SEND_LINK_BASE
+    sep = ""
     if api_url:
         parsed = urlparse(api_url.rstrip("/"))
         host = parsed.hostname or ""
         if host == "api.bitwarden.com":
             pass
         elif host == "api.bitwarden.eu":
-            base = "https://vault.bitwarden.eu/#/send"
+            base, sep = "https://vault.bitwarden.eu/#/send", "/"
         else:
             path = parsed.path.removesuffix("/api")
-            base = f"{parsed.scheme}://{parsed.netloc}{path}/#/send"
-    return f"{base}/{access_id}/{fragment}"
+            base, sep = f"{parsed.scheme}://{parsed.netloc}{path}/#/send", "/"
+    return f"{base}{sep}{access_id}/{fragment}"

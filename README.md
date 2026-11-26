@@ -112,7 +112,6 @@ immediately — the token is **not cached** across requests, in order to fully c
 | `x-bitwarden-client-secret` | string | Yes | None | None | The corresponding Client Secret, used only within this request to exchange for an access_token; not persisted and not logged | `AbCdEf123...` |
 | `x-bitwarden-identity-url` | string | Optional | `https://identity.bitwarden.com` | None | Identity Token Endpoint; for EU Cloud pass `https://identity.bitwarden.eu`, for self-hosted pass `https://your.domain.com/identity` | `https://identity.bitwarden.eu` |
 | `x-bitwarden-api-url` | string | Optional | `https://api.bitwarden.com` | None | Public API Base URL; for EU Cloud pass `https://api.bitwarden.eu`, for self-hosted pass `https://your.domain.com/api` | `https://api.bitwarden.eu` |
-
 | `x-bitwarden-user-client-id` | string | For the Send tool | None | None | Personal API key client id of the sending member account | `user.3b1f...` |
 | `x-bitwarden-user-client-secret` | string | For the Send tool | None | None | The personal API key client secret; used only within this request | `AbCdEf123...` |
 | `x-bitwarden-master-password` | string | For the Send tool | None | None | Master password of that account; used in memory to unlock the account key for this request only; never stored or logged | `********` |
@@ -202,7 +201,6 @@ Base URL: `https://api.bitwarden.com` (default; overridable per-request, see Aut
 | `bitwarden_create_group` | Create a new vault group | `name` (string, required), `access_all` (bool, optional, default false), `external_id` (string, optional) |
 | `bitwarden_list_member_groups` | View the groups the specified member currently belongs to | `member_id` (string, required) |
 | `bitwarden_update_member_groups` | **Core operation**: assign the member to the specified set of vault groups (full overwrite, not incremental append) | `member_id` (string, required), `group_ids` (string[], required) |
-
 | `bitwarden_create_text_send` | Create a text Send in the sending account and return its share link. Each call creates a new Send; do not retry after a success. Errors are JSON with `error` = `invalid_argument`, `missing_credentials`, `authentication_failed`, `unlock_failed`, `unsupported_account` or `bitwarden_error` | `secret` (string, required, 1..1000 chars), `expiration_hours` (int, optional, default 24, 1..720), `max_access_count` (int, optional, default 1, 1..100), `name` (string, optional, default `Credentials`, max 100), `hide_text` (bool, optional, default true) |
 
 **Member `type` (role) enum:** `0`=Owner, `1`=Admin, `2`=User (default/regular Member), `3`=Manager, `4`=Custom.

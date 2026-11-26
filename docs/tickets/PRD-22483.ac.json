@@ -46,7 +46,7 @@
   "ac": "AC1",
   "dw": "DW1",
   "priority": "P1",
-  "text": "Given access_id 'abc123' and a fixed seed, When the link is built for x-bitwarden-api-url parametrized over {absent -> https://send.bitwarden.com/#, https://api.bitwarden.eu -> https://vault.bitwarden.eu/#/send, https://vault.example.com/api -> https://vault.example.com/#/send}, Then the link is exactly '<base>/abc123/<base64url(seed) without padding>' for each",
+  "text": "Given access_id 'abc123' and a fixed seed, When the link is built for x-bitwarden-api-url parametrized over {absent -> https://send.bitwarden.com/#, https://api.bitwarden.eu -> https://vault.bitwarden.eu/#/send, https://vault.example.com/api -> https://vault.example.com/#/send}, Then the link is exactly 'https://send.bitwarden.com/#abc123/<base64url(seed) without padding>' for the default region and '<vault base>/#/send/abc123/<base64url(seed) without padding>' for EU and self-hosted",
   "type": "auto",
   "tests": [
    "tests/test_send_crypto.py::test_send_link_base_per_region"
@@ -182,7 +182,7 @@
    "Copy the 'link' from the tool result.",
    "Open the link in a private browser window and click the reveal control."
   ],
-  "expect": "The tool result has a link starting with https://send.bitwarden.com/#/ (or the tenant's region base); the opened page shows exactly 'qa-PRD-22483-<timestamp>'.",
+  "expect": "The tool result has a link starting with https://send.bitwarden.com/# followed directly by the accessId (or the tenant's region base); the opened page shows exactly 'qa-PRD-22483-<timestamp>'.",
   "result": "untested",
   "notes": "Needs a real vendor account; not a release blocker for vendor MCP (mcp-track.md section 3).",
   "reason": "Needs a real vendor account: a Bitwarden test organization with a member account API key and a bitwarden vendor with the three Send credential fields on INT (registered by Leo, tested after INT publish)."

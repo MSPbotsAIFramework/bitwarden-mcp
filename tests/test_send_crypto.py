@@ -56,15 +56,15 @@ def test_known_vectors():
 
 
 @pytest.mark.parametrize(
-    "api_url,base",
+    "api_url,base,sep",
     [
-        (None, "https://send.bitwarden.com/#"),
-        ("https://api.bitwarden.com", "https://send.bitwarden.com/#"),
-        ("https://api.bitwarden.eu", "https://vault.bitwarden.eu/#/send"),
-        ("https://vault.example.com/api", "https://vault.example.com/#/send"),
+        (None, "https://send.bitwarden.com/#", ""),
+        ("https://api.bitwarden.com", "https://send.bitwarden.com/#", ""),
+        ("https://api.bitwarden.eu", "https://vault.bitwarden.eu/#/send", "/"),
+        ("https://vault.example.com/api", "https://vault.example.com/#/send", "/"),
     ],
 )
-def test_send_link_base_per_region(api_url, base):
+def test_send_link_base_per_region(api_url, base, sep):
     seed = bytes(range(16))
     frag = base64.urlsafe_b64encode(seed).decode().rstrip("=")
-    assert sc.send_link(api_url, "abc123", seed) == f"{base}/abc123/{frag}"
+    assert sc.send_link(api_url, "abc123", seed) == f"{base}{sep}abc123/{frag}"

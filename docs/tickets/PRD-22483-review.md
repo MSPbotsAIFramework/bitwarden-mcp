@@ -9,3 +9,6 @@ Verdict: changes requested
 2. [suggestion] README.md (tool table and header table) — the new `bitwarden_create_text_send` row and the three new header rows are separated from their tables by a blank line, so they render as stray text rather than table rows. Remove the blank lines.
 
 ### Fixes
+
+1. [must-fix] Fixed. `send_link` now builds the default-region link as `https://send.bitwarden.com/#<accessId>/<fragment>` (no slash after `#`); EU and self-hosted keep `<vault>/#/send/<accessId>/<fragment>`. `tests/test_send_crypto.py` parametrization now carries the separator per region; TC-BWS-004 text and the manual-case expectation in `PRD-22483.ac.json` were corrected to the same link shape as the review requested (the frozen main doc `PRD-22483.md` is not edited; its link example is superseded by this entry). Re-run: `uv run pytest` 34 passed; no Chinese characters in the tree.
+2. [suggestion] Fixed. Removed the blank lines splitting the README tool table and header table.
